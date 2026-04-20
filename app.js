@@ -10,6 +10,12 @@ require("./db");
 
 const app = express();
 
+app.use(express.static(path.join(__dirname, "public")));
+
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "login.html"));
+});
+
 // 🔥 SOCKET.IO
 const http = require("http").createServer(app);
 const { Server } = require("socket.io");
