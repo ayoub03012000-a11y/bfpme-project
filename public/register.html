@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Inscription - BFPME</title>
+  <link rel="stylesheet" href="./auth.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+</head>
+
+<body>
+
+  <main class="auth-page">
+    <div class="auth-wrapper">
+      <section class="auth-brand-side">
+        <a href="./acceuill.html" class="auth-logo-link">
+          <img src="./logo_top2-2.png" alt="BFPME Logo" class="auth-logo">
+        </a>
+
+        <div class="auth-brand-content">
+          <span class="auth-badge">Ouverture de compte</span>
+          <h1>Créez votre espace client BFPME</h1>
+          <p>
+            Remplissez le formulaire d’inscription pour soumettre votre demande d’accès.
+            Votre compte sera activé après validation par la banque.
+          </p>
+
+          <ul class="auth-features">
+            <li><i class="fa-solid fa-check"></i> Dépôt et suivi des dossiers</li>
+            <li><i class="fa-solid fa-check"></i> Échange sécurisé avec la banque</li>
+            <li><i class="fa-solid fa-check"></i> Accès à vos documents et notifications</li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="auth-form-side">
+        <div class="auth-card auth-card-register">
+          <div class="auth-card-header">
+            <h2>Inscription</h2>
+            <p>Veuillez renseigner vos informations personnelles.</p>
+          </div>
+
+          <form class="auth-form" id="registerForm">
+            <div class="auth-grid-2">
+              <div class="auth-input-group">
+                <label for="firstName">Prénom</label>
+                <div class="auth-input-wrap">
+                  <i class="fa-regular fa-user"></i>
+                  <input type="text" id="firstName" placeholder="Votre prénom" required>
+                </div>
+              </div>
+
+              <div class="auth-input-group">
+                <label for="lastName">Nom</label>
+                <div class="auth-input-wrap">
+                  <i class="fa-regular fa-user"></i>
+                  <input type="text" id="lastName" placeholder="Votre nom" required>
+                </div>
+              </div>
+            </div>
+
+            <div class="auth-grid-2">
+              <div class="auth-input-group">
+                <label for="registerEmail">Adresse e-mail</label>
+                <div class="auth-input-wrap">
+                  <i class="fa-regular fa-envelope"></i>
+                  <input type="email" id="registerEmail" placeholder="exemple@email.com" required>
+                </div>
+              </div>
+
+              <div class="auth-input-group">
+                <label for="phone">Téléphone</label>
+                <div class="auth-input-wrap">
+                  <i class="fa-solid fa-phone"></i>
+                  <input type="tel" id="phone" placeholder="+216 xx xxx xxx" required>
+                </div>
+              </div>
+            </div>
+
+            <div class="auth-input-group">
+              <label for="companyName">Nom de l’entreprise <span>(optionnel)</span></label>
+              <div class="auth-input-wrap">
+                <i class="fa-solid fa-building"></i>
+                <input type="text" id="companyName" placeholder="Nom de votre entreprise">
+              </div>
+            </div>
+
+            <div class="auth-grid-2">
+              <div class="auth-input-group">
+                <label for="password">Mot de passe</label>
+                <div class="auth-input-wrap">
+                  <i class="fa-solid fa-lock"></i>
+                  <input type="password" id="password" placeholder="••••••••" required>
+                </div>
+              </div>
+
+              <div class="auth-input-group">
+                <label for="confirmPassword">Confirmer le mot de passe</label>
+                <div class="auth-input-wrap">
+                  <i class="fa-solid fa-lock"></i>
+                  <input type="password" id="confirmPassword" placeholder="••••••••" required>
+                </div>
+              </div>
+            </div>
+
+            <div class="auth-notice">
+              Votre compte sera créé en attente de validation. L’accès à votre espace sera activé après confirmation par
+              la banque.
+            </div>
+
+            <label class="auth-checkbox auth-checkbox-register">
+              <input type="checkbox" required>
+              <span>Je confirme l’exactitude des informations fournies.</span>
+            </label>
+
+            <div id="registerMessage" class="auth-message"></div>
+
+            <button type="submit" class="auth-submit-btn">Créer mon compte</button>
+          </form>
+
+          <p class="auth-bottom-text">
+            Vous avez déjà un compte ?
+            <a href="./login.html">Se connecter</a>
+          </p>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <script>
+    const registerForm = document.getElementById("registerForm");
+    const registerMessage = document.getElementById("registerMessage");
+
+    registerForm.addEventListener("submit", async function (e) {
+      e.preventDefault();
+
+      registerMessage.textContent = "";
+      registerMessage.className = "auth-message";
+
+      const first_name = document.getElementById("firstName").value.trim();
+      const last_name = document.getElementById("lastName").value.trim();
+      const email = document.getElementById("registerEmail").value.trim();
+      const phone = document.getElementById("phone").value.trim();
+      const company_name = document.getElementById("companyName").value.trim();
+      const password = document.getElementById("password").value;
+      const confirmPassword = document.getElementById("confirmPassword").value;
+
+      if (password !== confirmPassword) {
+        registerMessage.textContent = "Les mots de passe ne correspondent pas.";
+        registerMessage.classList.add("error");
+        return;
+      }
+
+      try {
+        const res = await fetch("http://localhost:3000/api/auth/register", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            first_name,
+            last_name,
+            email,
+            phone,
+            company_name,
+            password
+          })
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          registerMessage.textContent = data.message || "Échec de l'inscription";
+          registerMessage.classList.add("error");
+          return;
+        }
+
+        registerMessage.textContent = "Inscription réussie. En attente de validation.";
+        registerMessage.classList.add("success");
+        registerForm.reset();
+      } catch (error) {
+        registerMessage.textContent = "Erreur serveur.";
+        registerMessage.classList.add("error");
+      }
+    });
+  </script>
+</body>
+
+</html>

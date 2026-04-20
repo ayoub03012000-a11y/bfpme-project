@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Connexion - BFPME</title>
+  <link rel="stylesheet" href="./auth.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+</head>
+
+<body>
+
+  <main class="auth-page">
+    <div class="auth-wrapper">
+      <section class="auth-brand-side">
+        <a href="./acceuill.html" class="auth-logo-link">
+          <img src="./logo_top2-2.png" alt="BFPME Logo" class="auth-logo">
+        </a>
+
+        <div class="auth-brand-content">
+          <span class="auth-badge">Espace sécurisé</span>
+          <h1>Bienvenue sur votre espace BFPME</h1>
+          <p>
+            Connectez-vous pour accéder à votre espace client ou à votre interface de gestion
+            du personnel en toute sécurité.
+          </p>
+
+          <ul class="auth-features">
+            <li><i class="fa-solid fa-check"></i> Accès sécurisé à vos dossiers</li>
+            <li><i class="fa-solid fa-check"></i> Suivi de l’état de vos demandes</li>
+            <li><i class="fa-solid fa-check"></i> Gestion des documents et notifications</li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="auth-form-side">
+        <div class="auth-card">
+          <div class="auth-card-header">
+            <h2>Connexion</h2>
+            <p>Veuillez saisir vos identifiants pour continuer.</p>
+          </div>
+
+          <form class="auth-form" id="loginForm">
+            <div class="auth-input-group">
+              <label for="loginEmail">Adresse e-mail</label>
+              <div class="auth-input-wrap">
+                <i class="fa-regular fa-envelope"></i>
+                <input type="email" id="loginEmail" placeholder="exemple@bfpme.com.tn" required>
+              </div>
+            </div>
+
+            <div class="auth-input-group">
+              <label for="loginPassword">Mot de passe</label>
+              <div class="auth-input-wrap">
+                <i class="fa-solid fa-lock"></i>
+                <input type="password" id="loginPassword" placeholder="••••••••" required>
+              </div>
+            </div>
+
+            <div class="auth-row">
+              <label class="auth-checkbox">
+                <input type="checkbox">
+                <span>Se souvenir de moi</span>
+              </label>
+
+              <a href="forgot-password.html" class="auth-link">Mot de passe oublié ?</a>
+            </div>
+
+            <div id="loginMessage" class="auth-message"></div>
+
+            <button type="submit" class="auth-submit-btn">Se connecter</button>
+          </form>
+
+          <div class="auth-separator">
+            <span>ou</span>
+          </div>
+
+          <p class="auth-bottom-text">
+            Vous n'avez pas encore de compte ?
+            <a href="./register.html">Créer un compte</a>
+          </p>
+        </div>
+      </section>
+    </div>
+  </main>
+
+<script>
+  const API_URL = "https://bfpme-1bkz.onrender.com";
+
+  const loginForm = document.getElementById("loginForm");
+  const loginMessage = document.getElementById("loginMessage");
+
+  loginForm.addEventListener("submit", async function (e) {
+    e.preventDefault();
+
+    loginMessage.textContent = "";
+    loginMessage.className = "auth-message";
+
+    const email = document.getElementById("loginEmail").value.trim();
+    const password = document.getElementById("loginPassword").value;
+
+    try {
+      const response = await fetch(`${API_URL}/api/auth/login`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ email, password })
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        localStorage.setItem("user", JSON.stringify(data.user));
+        localStorage.setItem("token", data.token);
+
+        loginMessage.textContent = "✅ Login réussi";
+        loginMessage.classList.add("success");
+
+        setTimeout(() => {
+          if (data.user.role === "admin") {
+            window.location.href = "admin.html";
+          } else if (data.user.role === "personnel") {
+            window.location.href = "dashboard-personnel.html";
+          } else {
+            window.location.href = "dashboard-client.html";
+          }
+        }, 800);
+
+      } else {
+        loginMessage.textContent = "❌ " + data.message;
+        loginMessage.classList.add("error");
+      }
+
+    } catch (error) {
+      loginMessage.textContent = "❌ Erreur serveur.";
+      loginMessage.classList.add("error");
+    }
+  });
+</script>
+</body>
+
+</html>

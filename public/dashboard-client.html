@@ -1,0 +1,900 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Client Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    :root {
+      --blue: #14357d;
+      --blue-dark: #0f2c68;
+      --bg1: #f3f6fd;
+      --bg2: #eaf0fb;
+      --green: #16a34a;
+      --red: #dc2626;
+      --yellow: #d4a017;
+      --text: #1f3156;
+      --card-bg: rgba(255, 255, 255, 0.9);
+      --panel-border: rgba(255,255,255,0.65);
+      --input-bg: #fff;
+      --input-text: #1f3156;
+      --muted: #66748c;
+    }
+
+    body.dark {
+      --bg1: #0f172a;
+      --bg2: #111827;
+      --text: #e5edf9;
+      --card-bg: rgba(30, 41, 59, 0.95);
+      --panel-border: rgba(71, 85, 105, 0.45);
+      --input-bg: #334155;
+      --input-text: #f8fafc;
+      --muted: #c7d2e3;
+    }
+
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Arial, sans-serif;
+      background: linear-gradient(135deg, var(--bg1), var(--bg2));
+      color: var(--text);
+      overflow-x: hidden;
+      transition: background 0.3s ease, color 0.3s ease;
+    }
+
+    .container {
+      max-width: 1150px;
+      margin: auto;
+      padding: 28px 20px 50px;
+    }
+
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 14px;
+      animation: slideDown 0.55s ease;
+    }
+
+    .topbar-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    h1 {
+      margin: 0;
+      color: var(--blue);
+      font-size: 34px;
+      font-weight: 800;
+    }
+
+    body.dark h1 {
+      color: #93c5fd;
+    }
+
+    #welcome {
+      margin: 0 0 18px;
+      color: var(--muted);
+      font-size: 16px;
+      animation: fadeUp 0.65s ease;
+    }
+
+    .btn {
+      border: none;
+      padding: 11px 18px;
+      border-radius: 12px;
+      cursor: pointer;
+      font-weight: 700;
+      transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+    }
+
+    .btn:hover {
+      transform: translateY(-2px);
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--blue), #1b4cb8);
+      color: #fff;
+      box-shadow: 0 10px 24px rgba(20, 53, 125, 0.22);
+    }
+
+    .btn-primary:hover {
+      background: linear-gradient(135deg, var(--blue-dark), #14357d);
+      box-shadow: 0 14px 28px rgba(20, 53, 125, 0.28);
+    }
+
+    .btn-secondary {
+      background: linear-gradient(135deg, #334155, #1e293b);
+      color: #fff;
+      box-shadow: 0 10px 20px rgba(15, 23, 42, 0.22);
+    }
+
+    .btn-secondary:hover {
+      background: linear-gradient(135deg, #1e293b, #0f172a);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1.05fr 1.45fr;
+      gap: 20px;
+      align-items: start;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+      margin: 20px 0;
+      animation: fadeUp 0.75s ease;
+    }
+
+    .stat {
+      position: relative;
+      overflow: hidden;
+      padding: 20px;
+      border-radius: 18px;
+      color: #fff;
+      text-align: center;
+      box-shadow: 0 14px 30px rgba(0, 0, 0, 0.08);
+      transition: transform 0.25s ease, box-shadow 0.25s ease;
+    }
+
+    .stat:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 18px 34px rgba(0, 0, 0, 0.12);
+    }
+
+    .stat::after {
+      content: "";
+      position: absolute;
+      width: 140px;
+      height: 140px;
+      border-radius: 50%;
+      top: -60px;
+      right: -40px;
+      background: rgba(255,255,255,0.14);
+    }
+
+    .blue {
+      background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+    }
+
+    .green {
+      background: linear-gradient(135deg, #22c55e, #15803d);
+    }
+
+    .red {
+      background: linear-gradient(135deg, #ef4444, #b91c1c);
+    }
+
+    .stat h2 {
+      margin: 0 0 8px;
+      font-size: 32px;
+      font-weight: 800;
+      animation: popIn 0.6s ease;
+    }
+
+    .stat p {
+      margin: 0;
+      font-size: 14px;
+      opacity: 0.95;
+      font-weight: 600;
+    }
+
+    .panel,
+    .chart-card {
+      background: var(--card-bg);
+      backdrop-filter: blur(8px);
+      border: 1px solid var(--panel-border);
+      border-radius: 22px;
+      padding: 22px;
+      box-shadow: 0 14px 36px rgba(21, 39, 83, 0.08);
+      animation: fadeUp 0.8s ease;
+      transition: background 0.3s ease, border 0.3s ease;
+    }
+
+    .panel h2,
+    .chart-card h2 {
+      margin: 0 0 16px;
+      color: var(--blue);
+      font-size: 23px;
+      font-weight: 800;
+    }
+
+    body.dark .panel h2,
+    body.dark .chart-card h2 {
+      color: #93c5fd;
+    }
+
+    .field {
+      margin-bottom: 14px;
+    }
+
+    .field label {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 14px;
+      font-weight: 700;
+      color: #36517f;
+    }
+
+    body.dark .field label {
+      color: #cbd5e1;
+    }
+
+    input,
+    textarea {
+      width: 100%;
+      padding: 12px 14px;
+      border-radius: 12px;
+      border: 1px solid #d7dfec;
+      background: var(--input-bg);
+      color: var(--input-text);
+      font-size: 14px;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease, background 0.3s ease;
+      outline: none;
+    }
+
+    input:focus,
+    textarea:focus {
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 4px rgba(59,130,246,0.12);
+      transform: translateY(-1px);
+    }
+
+    textarea {
+      min-height: 110px;
+      resize: vertical;
+    }
+
+    .upload-box {
+      position: relative;
+      border: 2px dashed #bfd0ea;
+      background: linear-gradient(180deg, #fbfdff, #f5f8fe);
+      padding: 22px;
+      text-align: center;
+      border-radius: 16px;
+      margin-top: 6px;
+      transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, background 0.3s ease;
+    }
+
+    body.dark .upload-box {
+      background: linear-gradient(180deg, #1e293b, #172131);
+      border-color: #475569;
+    }
+
+    .upload-box:hover {
+      transform: translateY(-2px);
+      border-color: #7da3e6;
+      box-shadow: 0 10px 22px rgba(59,130,246,0.10);
+    }
+
+    .upload-box span {
+      display: block;
+      color: #557199;
+      font-size: 14px;
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+
+    body.dark .upload-box span {
+      color: #cbd5e1;
+    }
+
+    .upload-box input[type="file"] {
+      border: none;
+      box-shadow: none;
+      background: transparent;
+      padding: 0;
+    }
+
+    .alert {
+      padding: 12px 14px;
+      border-radius: 12px;
+      margin-top: 14px;
+      font-weight: 700;
+      animation: fadeUp 0.35s ease;
+    }
+
+    .alert-pending {
+      background: #fff6db;
+      color: #8a6400;
+      border: 1px solid #f4dfa0;
+    }
+
+    .alert-accepted {
+      background: #ddf5e7;
+      color: #0d7a41;
+      border: 1px solid #b7e8cc;
+    }
+
+    .alert-refused {
+      background: #fde5e5;
+      color: #b42318;
+      border: 1px solid #f8caca;
+    }
+
+    .list {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .dossier-card {
+      background: linear-gradient(180deg, #ffffff, #fbfcff);
+      border: 1px solid #e4eaf4;
+      border-radius: 18px;
+      padding: 18px;
+      box-shadow: 0 10px 24px rgba(17, 31, 68, 0.05);
+      transition: transform 0.22s ease, box-shadow 0.22s ease, background 0.3s ease;
+      animation: fadeUp 0.45s ease;
+    }
+
+    body.dark .dossier-card {
+      background: linear-gradient(180deg, #172131, #111827);
+      border-color: #334155;
+    }
+
+    .dossier-card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 16px 28px rgba(17, 31, 68, 0.09);
+    }
+
+    .dossier-card h3 {
+      margin: 0 0 10px;
+      color: #14357d;
+      font-size: 20px;
+    }
+
+    body.dark .dossier-card h3 {
+      color: #93c5fd;
+    }
+
+    .dossier-card p {
+      margin: 8px 0;
+      color: #5e6f88;
+      line-height: 1.6;
+      font-size: 14px;
+    }
+
+    body.dark .dossier-card p {
+      color: #cbd5e1;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 30px;
+      padding: 5px 12px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.2px;
+    }
+
+    .pending {
+      background: #fff3cd;
+      color: #856404;
+    }
+
+    .accepted {
+      background: #d4edda;
+      color: #155724;
+    }
+
+    .refused {
+      background: #fde2e2;
+      color: #b42318;
+    }
+
+    a {
+      color: var(--blue);
+      font-weight: 700;
+      text-decoration: none;
+    }
+
+    body.dark a {
+      color: #93c5fd;
+    }
+
+    a:hover {
+      text-decoration: underline;
+    }
+
+    .empty-state {
+      padding: 18px;
+      border-radius: 14px;
+      background: #f8fbff;
+      border: 1px dashed #d9e3f2;
+      color: #72819b;
+      font-weight: 600;
+    }
+
+    body.dark .empty-state {
+      background: #172131;
+      border-color: #334155;
+      color: #cbd5e1;
+    }
+
+    .charts-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin-top: 20px;
+    }
+
+    canvas {
+      width: 100% !important;
+      height: 320px !important;
+      margin-top: 10px;
+    }
+
+    #toast {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      color: white;
+      padding: 14px 18px;
+      border-radius: 10px;
+      font-weight: bold;
+      opacity: 0;
+      transform: translateY(-20px);
+      transition: all 0.4s ease;
+      z-index: 9999;
+      box-shadow: 0 10px 24px rgba(0,0,0,0.18);
+      pointer-events: none;
+    }
+
+    #toast.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .toast-success {
+      background: #16a34a;
+    }
+
+    .toast-error {
+      background: #dc2626;
+    }
+
+    .toast-info {
+      background: #14357d;
+    }
+
+    @keyframes fadeUp {
+      from {
+        opacity: 0;
+        transform: translateY(12px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes slideDown {
+      from {
+        opacity: 0;
+        transform: translateY(-12px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes popIn {
+      0% {
+        transform: scale(0.85);
+        opacity: 0;
+      }
+      100% {
+        transform: scale(1);
+        opacity: 1;
+      }
+    }
+
+    @media (max-width: 980px) {
+      .grid,
+      .charts-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .stats {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .container {
+        padding: 18px 12px 36px;
+      }
+
+      .topbar {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .topbar-actions {
+        width: 100%;
+      }
+
+      .topbar-actions .btn {
+        flex: 1;
+      }
+
+      h1 {
+        font-size: 28px;
+      }
+
+      .panel,
+      .chart-card {
+        padding: 16px;
+        border-radius: 16px;
+      }
+
+      .dossier-card {
+        padding: 14px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+
+    <div class="topbar">
+      <h1>👤 Dashboard Client</h1>
+
+      <div class="topbar-actions">
+        <button class="btn btn-secondary" onclick="toggleDarkMode()">🌙 Mode</button>
+        <button class="btn btn-primary" onclick="logout()">Déconnexion</button>
+      </div>
+    </div>
+
+    <p id="welcome"></p>
+
+    <div class="stats">
+      <div class="stat blue">
+        <h2 id="total">0</h2>
+        <p>Total dossiers</p>
+      </div>
+
+      <div class="stat green">
+        <h2 id="acceptedCount">0</h2>
+        <p>Acceptés</p>
+      </div>
+
+      <div class="stat red">
+        <h2 id="refusedCount">0</h2>
+        <p>Refusés</p>
+      </div>
+    </div>
+
+    <div class="grid">
+      <div class="panel">
+        <h2>📤 Envoyer un dossier</h2>
+
+        <div class="field">
+          <label for="title">Titre</label>
+          <input id="title" placeholder="Titre du dossier">
+        </div>
+
+        <div class="field">
+          <label for="description">Description</label>
+          <textarea id="description" placeholder="Décrivez votre demande"></textarea>
+        </div>
+
+        <div class="field">
+          <label>Fichier</label>
+          <div class="upload-box">
+            <span>📎 Ajouter un fichier</span>
+            <input type="file" id="file">
+          </div>
+        </div>
+
+        <button class="btn btn-primary" onclick="sendDossier()">Envoyer</button>
+
+        <div id="msg"></div>
+      </div>
+
+      <div class="panel">
+        <h2>📂 Mes dossiers</h2>
+        <div id="list" class="list"></div>
+      </div>
+    </div>
+
+    <div class="charts-grid">
+      <div class="chart-card">
+        <h2>📊 Statistiques</h2>
+        <canvas id="statusChart"></canvas>
+      </div>
+
+      <div class="chart-card">
+        <h2>📈 Evolution</h2>
+        <canvas id="lineChart"></canvas>
+      </div>
+    </div>
+
+  </div>
+
+  <div id="toast"></div>
+
+<script>
+  const API_URL = "https://bfpme-1bkz.onrender.com";
+
+  const user = JSON.parse(localStorage.getItem("user"));
+  const token = localStorage.getItem("token");
+  const socket = io(API_URL);
+
+  let statusChart = null;
+  let lineChart = null;
+
+  if (!user || !token) {
+    window.location.href = "login.html";
+  }
+
+  if (localStorage.getItem("darkMode") === "true") {
+    document.body.classList.add("dark");
+  }
+
+  document.getElementById("welcome").innerText =
+    "Bienvenue " + (user.first_name || "Client");
+
+  function logout() {
+    localStorage.clear();
+    window.location.href = "login.html";
+  }
+
+  function toggleDarkMode() {
+    document.body.classList.toggle("dark");
+    localStorage.setItem(
+      "darkMode",
+      document.body.classList.contains("dark")
+    );
+  }
+
+  function showToast(message, type = "info") {
+    const toast = document.getElementById("toast");
+    toast.innerText = message;
+    toast.className = "show toast-" + type;
+
+    setTimeout(() => {
+      toast.className = "";
+    }, 3000);
+  }
+
+  function sendDossier() {
+    const title = document.getElementById("title").value.trim();
+    const description = document.getElementById("description").value.trim();
+    const fileInput = document.getElementById("file");
+    const selectedFile = fileInput.files[0];
+    const msg = document.getElementById("msg");
+
+    if (!title || !description) {
+      msg.innerHTML = `<div class="alert alert-refused">Veuillez remplir le titre et la description.</div>`;
+      showToast("Veuillez remplir tous les champs", "error");
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("title", title);
+    formData.append("description", description);
+    formData.append("userEmail", user.email);
+
+    if (selectedFile) {
+      formData.append("file", selectedFile);
+    }
+
+    fetch(`${API_URL}/api/dossiers`, {
+      method: "POST",
+      headers: {
+        Authorization: "Bearer " + token
+      },
+      body: formData
+    })
+      .then(res => {
+        if (res.status === 401 || res.status === 403) {
+          logout();
+          return;
+        }
+        return res.json();
+      })
+      .then(data => {
+        if (!data) return;
+        msg.innerHTML = `<div class="alert alert-accepted">Dossier envoyé avec succès ✅</div>`;
+        showToast("Dossier envoyé avec succès ✅", "success");
+        document.getElementById("title").value = "";
+        document.getElementById("description").value = "";
+        document.getElementById("file").value = "";
+        loadDossiers();
+      })
+      .catch(() => {
+        msg.innerHTML = `<div class="alert alert-refused">Erreur lors de l'envoi du dossier.</div>`;
+        showToast("Erreur lors de l'envoi du dossier", "error");
+      });
+  }
+
+  function renderCharts(dossiers) {
+    let accepted = 0;
+    let refused = 0;
+    let pending = 0;
+
+    const groupedByDate = {};
+
+    dossiers.forEach(d => {
+      if (d.status === "accepté") accepted++;
+      else if (d.status === "refusé") refused++;
+      else pending++;
+
+      const rawDate = d.createdAt ? new Date(d.createdAt) : new Date();
+      const date = rawDate.toLocaleDateString();
+
+      if (!groupedByDate[date]) {
+        groupedByDate[date] = 0;
+      }
+      groupedByDate[date]++;
+    });
+
+    const statusCtx = document.getElementById("statusChart");
+    const lineCtx = document.getElementById("lineChart");
+
+    if (statusChart) statusChart.destroy();
+    if (lineChart) lineChart.destroy();
+
+    statusChart = new Chart(statusCtx, {
+      type: "doughnut",
+      data: {
+        labels: ["Accepté", "Refusé", "En attente"],
+        datasets: [{
+          data: [accepted, refused, pending],
+          backgroundColor: ["#22c55e", "#ef4444", "#facc15"],
+          borderWidth: 0
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: "bottom"
+          }
+        }
+      }
+    });
+
+    lineChart = new Chart(lineCtx, {
+      type: "line",
+      data: {
+        labels: Object.keys(groupedByDate),
+        datasets: [{
+          label: "Dossiers",
+          data: Object.values(groupedByDate),
+          borderColor: "#3b82f6",
+          backgroundColor: "rgba(59,130,246,0.15)",
+          fill: true,
+          tension: 0.35,
+          pointRadius: 4,
+          pointBackgroundColor: "#1d4ed8"
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            display: true,
+            position: "bottom"
+          }
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            ticks: {
+              precision: 0
+            }
+          }
+        }
+      }
+    });
+  }
+
+  function loadDossiers() {
+    fetch(`${API_URL}/api/dossiers`, {
+      headers: {
+        Authorization: "Bearer " + token
+      }
+    })
+      .then(res => {
+        if (res.status === 401 || res.status === 403) {
+          logout();
+          return;
+        }
+        return res.json();
+      })
+      .then(data => {
+        if (!data) return;
+
+        const my = data.filter(d => d.userEmail === user.email);
+        const list = document.getElementById("list");
+        list.innerHTML = "";
+
+        let acceptedCounter = 0;
+        let refusedCounter = 0;
+
+        if (my.length === 0) {
+          list.innerHTML = `<div class="empty-state">Aucun dossier envoyé pour le moment.</div>`;
+        }
+
+        my.forEach(d => {
+          let cls = "pending";
+
+          if (d.status === "accepté") {
+            cls = "accepted";
+            acceptedCounter++;
+          }
+
+          if (d.status === "refusé") {
+            cls = "refused";
+            refusedCounter++;
+          }
+
+          list.innerHTML += `
+            <div class="dossier-card">
+              <h3>${d.title}</h3>
+              <p>${d.description}</p>
+
+              <span class="badge ${cls}">${d.status}</span>
+
+              ${d.file ? `<p><a href="${API_URL}/uploads/${d.file}" target="_blank">Voir fichier</a></p>` : ""}
+
+              ${d.status === "refusé" && d.reason ? `<div class="alert alert-refused">Raison: ${d.reason}</div>` : ""}
+              ${d.status === "accepté" ? `<div class="alert alert-accepted">Votre dossier a été accepté.</div>` : ""}
+              ${d.status === "en attente" ? `<div class="alert alert-pending">Votre dossier est en attente de traitement.</div>` : ""}
+            </div>
+          `;
+        });
+
+        document.getElementById("total").innerText = my.length;
+        document.getElementById("acceptedCount").innerText = acceptedCounter;
+        document.getElementById("refusedCount").innerText = refusedCounter;
+
+        renderCharts(my);
+      })
+      .catch(() => {
+        document.getElementById("list").innerHTML =
+          `<div class="empty-state">Erreur lors du chargement des dossiers.</div>`;
+        showToast("Erreur lors du chargement", "error");
+      });
+  }
+
+  socket.on("dossier_updated", (data) => {
+    if (data.userEmail === user.email) {
+      showToast("Statut de votre dossier mis à jour 🔔", "info");
+      loadDossiers();
+    }
+  });
+
+  socket.on("user_activated", (data) => {
+    if (data.userEmail === user.email) {
+      showToast("Votre compte a été activé ✅", "success");
+    }
+  });
+
+  loadDossiers();
+  setInterval(loadDossiers, 5000);
+</script>
+
+</body>
+</html>

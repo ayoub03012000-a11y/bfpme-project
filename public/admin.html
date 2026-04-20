@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: linear-gradient(135deg, #f6f8fc 0%, #eef2f9 100%);
+      color: #1f3156;
+    }
+    body.dark {
+      background: linear-gradient(135deg, #0f172a 0%, #111827 100%);
+      color: #e2e8f0;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 28px 20px 50px;
+    }
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+    .topbar-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    h1 {
+      margin: 0;
+      color: #14357d;
+      font-size: 34px;
+    }
+    body.dark h1 {
+      color: #93c5fd;
+    }
+    .btn {
+      border: none;
+      padding: 11px 16px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-weight: 700;
+    }
+    .btn-primary {
+      background: #14357d;
+      color: #fff;
+    }
+    .btn-primary:hover {
+      background: #0f2c68;
+    }
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin-bottom: 22px;
+    }
+    .stat-card, .panel {
+      background: #fff;
+      border-radius: 18px;
+      padding: 20px;
+      box-shadow: 0 10px 26px rgba(22, 40, 84, 0.07);
+      border: 1px solid #e8edf5;
+    }
+    body.dark .stat-card,
+    body.dark .panel {
+      background: #1e293b;
+      border-color: #334155;
+      color: #e2e8f0;
+    }
+    .stat-label {
+      margin: 0 0 10px;
+      color: #7b88a2;
+      font-size: 14px;
+      font-weight: 700;
+    }
+    .stat-value {
+      margin: 0;
+      font-size: 30px;
+      font-weight: 800;
+      color: #14357d;
+    }
+    body.dark .stat-value {
+      color: #93c5fd;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin-bottom: 20px;
+    }
+    .panel h2 {
+      margin-top: 0;
+      color: #14357d;
+    }
+    body.dark .panel h2 {
+      color: #93c5fd;
+    }
+    .card {
+      background: #fbfcff;
+      border: 1px solid #e4eaf4;
+      border-radius: 16px;
+      padding: 14px;
+      margin-top: 12px;
+    }
+    body.dark .card {
+      background: #172131;
+      border-color: #334155;
+    }
+    .card p {
+      margin: 6px 0;
+    }
+    .badge {
+      display: inline-block;
+      padding: 5px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: bold;
+    }
+    .pending { background: #fff3cd; color: #856404; }
+    .accepted { background: #d4edda; color: #155724; }
+    .refused { background: #fde2e2; color: #b42318; }
+    .active { background: #d4edda; color: #155724; }
+    .charts-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+    canvas {
+      width: 100% !important;
+      height: 320px !important;
+    }
+    #toast {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      padding: 14px 18px;
+      border-radius: 10px;
+      color: white;
+      font-weight: bold;
+      opacity: 0;
+      transform: translateY(-20px);
+      transition: 0.3s;
+      z-index: 999;
+    }
+    #toast.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    .toast-success { background: #16a34a; }
+    .toast-error { background: #dc2626; }
+    .toast-info { background: #14357d; }
+
+    @media (max-width: 900px) {
+      .stats-grid, .grid, .charts-grid {
+        grid-template-columns: 1fr;
+      }
+      .topbar {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="topbar">
+      <div>
+        <h1>👑 Admin Dashboard</h1>
+        <p id="welcome"></p>
+      </div>
+      <div class="topbar-actions">
+        <button class="btn" onclick="toggleDarkMode()">🌙 Mode</button>
+        <button class="btn btn-primary" onclick="logout()">Déconnexion</button>
+      </div>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-card">
+        <p class="stat-label">Total Users</p>
+        <p class="stat-value" id="usersCount">0</p>
+      </div>
+      <div class="stat-card">
+        <p class="stat-label">Total Dossiers</p>
+        <p class="stat-value" id="dossiersCount">0</p>
+      </div>
+      <div class="stat-card">
+        <p class="stat-label">Clients Pending</p>
+        <p class="stat-value" id="pendingClientsCount">0</p>
+      </div>
+      <div class="stat-card">
+        <p class="stat-label">Personnel/Admin</p>
+        <p class="stat-value" id="staffCount">0</p>
+      </div>
+    </div>
+
+    <div class="grid">
+      <div class="panel">
+        <h2>👥 Users</h2>
+        <div id="users"></div>
+      </div>
+
+      <div class="panel">
+        <h2>📂 Dossiers</h2>
+        <div id="dossiers"></div>
+      </div>
+    </div>
+
+    <div class="charts-grid">
+      <div class="panel">
+        <h2>📊 Répartition rôles</h2>
+        <canvas id="rolesChart"></canvas>
+      </div>
+      <div class="panel">
+        <h2>📈 Répartition dossiers</h2>
+        <canvas id="dossiersChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast"></div>
+
+  <script>
+const API_URL = "https://bfpme-1bkz.onrender.com";
+
+const user = JSON.parse(localStorage.getItem("user"));
+const token = localStorage.getItem("token");
+
+const socket = io(API_URL);
+
+if (!user || !token || user.role !== "admin") {
+  window.location.href = "login.html";
+}
+
+function logout() {
+  localStorage.clear();
+  window.location.href = "login.html";
+}
+
+function showToast(msg, type = "info") {
+  const toast = document.getElementById("toast");
+  toast.innerText = msg;
+  toast.className = "show toast-" + type;
+
+  setTimeout(() => {
+    toast.className = "";
+  }, 3000);
+}
+
+// ==========================
+// USERS
+// ==========================
+function loadUsers() {
+  fetch(`${API_URL}/api/admin/users`, {
+    headers: { Authorization: "Bearer " + token }
+  })
+  .then(res => res.json())
+  .then(data => {
+    const container = document.getElementById("usersList");
+    container.innerHTML = "";
+
+    if (data.length === 0) {
+      container.innerHTML = `<div class="empty-box">Aucun utilisateur</div>`;
+      return;
+    }
+
+    data.forEach(u => {
+      container.innerHTML += `
+        <div class="card">
+          <h3>${u.first_name} ${u.last_name}</h3>
+          <p>${u.email}</p>
+          <p>Role: <b>${u.role}</b></p>
+          <p>Status: <b>${u.status}</b></p>
+        </div>
+      `;
+    });
+  })
+  .catch(() => showToast("Erreur users", "error"));
+}
+
+// ==========================
+// DOSSIERS
+// ==========================
+function loadDossiers() {
+  fetch(`${API_URL}/api/admin/dossiers`, {
+    headers: { Authorization: "Bearer " + token }
+  })
+  .then(res => res.json())
+  .then(data => {
+    const container = document.getElementById("dossiersList");
+    container.innerHTML = "";
+
+    if (data.length === 0) {
+      container.innerHTML = `<div class="empty-box">Aucun dossier</div>`;
+      return;
+    }
+
+    data.forEach(d => {
+      container.innerHTML += `
+        <div class="card">
+          <h3>${d.title}</h3>
+          <p>${d.description}</p>
+          <p>${d.userEmail}</p>
+          <p>Status: ${d.status}</p>
+
+          ${d.file ? `<a href="${API_URL}/uploads/${d.file}" target="_blank">Voir fichier</a>` : ""}
+        </div>
+      `;
+    });
+  })
+  .catch(() => showToast("Erreur dossiers", "error"));
+}
+
+// ==========================
+// STATS
+// ==========================
+function loadStats() {
+  fetch(`${API_URL}/api/admin/dossiers`, {
+    headers: { Authorization: "Bearer " + token }
+  })
+  .then(res => res.json())
+  .then(data => {
+    const total = data.length;
+    const accepted = data.filter(d => d.status === "accepté").length;
+    const refused = data.filter(d => d.status === "refusé").length;
+    const pending = data.filter(d => d.status === "en attente").length;
+
+    document.getElementById("total").innerText = total;
+    document.getElementById("accepted").innerText = accepted;
+    document.getElementById("refused").innerText = refused;
+    document.getElementById("pending").innerText = pending;
+  });
+}
+
+// ==========================
+// REALTIME
+// ==========================
+socket.on("new_dossier", () => {
+  showToast("Nouveau dossier 🔥");
+  loadDossiers();
+  loadStats();
+});
+
+socket.on("dossier_updated", () => {
+  showToast("Dossier mis à jour");
+  loadDossiers();
+  loadStats();
+});
+
+socket.on("user_activated", () => {
+  loadUsers();
+});
+
+// ==========================
+// INIT
+// ==========================
+function init() {
+  loadUsers();
+  loadDossiers();
+  loadStats();
+}
+
+init();
+
+setInterval(() => {
+  loadStats();
+}, 5000);
+
+</script>
+</body>
+</html>
