@@ -6,6 +6,7 @@ const multer = require("multer");
 const path = require("path");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcrypt");
+const mongoose = require("mongoose");
 require("./db");
 
 const app = express();
@@ -15,6 +16,10 @@ app.use(express.static(path.join(__dirname, "public")));
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "login.html"));
 });
+// 🔥 MongoDB connection
+mongoose.connect(process.env.MONGO_URI)
+  .then(() => console.log("MongoDB connected"))
+  .catch(err => console.log("MongoDB error:", err));
 
 // 🔥 SOCKET.IO
 const http = require("http").createServer(app);
