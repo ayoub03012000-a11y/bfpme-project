@@ -119,10 +119,9 @@ app.post("/api/auth/register", async (req, res) => {
     res.json({ message: "Inscription réussie", user });
   } catch (error) {
     console.log("REGISTER ERROR:", error);
-    res.status(500).json({ message: "Erreur serveur" });
+    res.status(500).json({ message: "Erreur serveur", error: error.message });
   }
 });
-
 app.post("/api/auth/login", async (req, res) => {
   const { email, password } = req.body;
 
